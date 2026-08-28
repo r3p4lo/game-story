@@ -1,0 +1,1853 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1a1d24">
+<title>Hari Yang Hilang dari Tarrow</title>
+<style>
+  :root{
+    --fog:#b8c2c9; --sea:#4a5d6e; --wood:#6b4e3a; --wood-dark:#3d2a1e;
+    --paper:#e8dcc0; --paper-dark:#c9b890; --ink:#2a2418;
+    --lamp:#e8b870; --blood:#8a3a2a; --moss:#5a6b4a;
+    --shadow:rgba(20,15,10,.5);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0a0c10;font-family:'Georgia','Times New Roman',serif;color:var(--ink);touch-action:none}
+  #game{position:fixed;inset:0;overflow:hidden;background:#0a0c10}
+  canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:auto;display:block}
+  
+  /* HUD */
+  #hud{position:absolute;top:0;left:0;right:0;padding:12px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:10}
+  .hud-btn{pointer-events:auto;background:rgba(232,220,192,.85);border:2px solid var(--wood-dark);color:var(--ink);padding:8px 14px;font-family:inherit;font-size:13px;cursor:pointer;border-radius:2px;box-shadow:0 2px 6px var(--shadow);backdrop-filter:blur(2px);transition:all .15s}
+  .hud-btn:hover,.hud-btn:active{background:var(--paper);transform:translateY(-1px)}
+  .hud-btn .kbd{font-size:10px;opacity:.6;margin-left:6px;font-family:monospace}
+  #hud-left,#hud-right{display:flex;gap:8px;flex-wrap:wrap}
+  #time-display{background:rgba(232,220,192,.85);border:2px solid var(--wood-dark);padding:6px 12px;font-size:12px;border-radius:2px;pointer-events:auto}
+  
+  /* Interaction prompt */
+  #interact-prompt{position:absolute;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(232,220,192,.92);border:2px solid var(--wood-dark);padding:10px 20px;font-size:14px;border-radius:2px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9;white-space:nowrap}
+  #interact-prompt.show{opacity:1}
+  
+  /* Dialog */
+  #dialog{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to bottom,rgba(232,220,192,.95),rgba(201,184,144,.98));border-top:3px solid var(--wood-dark);padding:20px 24px 28px;min-height:140px;z-index:20;transform:translateY(100%);transition:transform .4s cubic-bezier(.4,0,.2,1);box-shadow:0 -4px 20px var(--shadow)}
+  #dialog.show{transform:translateY(0)}
+  #speaker{font-weight:bold;color:var(--blood);font-size:15px;margin-bottom:8px;letter-spacing:.5px}
+  #dialog-text{font-size:15px;line-height:1.6;color:var(--ink);min-height:40px;font-style:italic}
+  #dialog-choices{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+  .choice{background:rgba(255,255,255,.4);border:1px solid var(--wood);padding:8px 12px;cursor:pointer;font-family:inherit;font-size:13px;text-align:left;border-radius:2px;transition:all .15s;color:var(--ink)}
+  .choice:hover{background:rgba(255,255,255,.7);border-color:var(--wood-dark)}
+  .choice.locked{opacity:.5;cursor:not-allowed;font-style:italic}
+  #dialog-next{position:absolute;bottom:10px;right:16px;font-size:11px;opacity:.6;animation:blink 1.5s infinite}
+  @keyframes blink{50%{opacity:.2}}
+  
+  /* Journal */
+  #journal{position:absolute;inset:0;background:rgba(10,12,16,.85);z-index:30;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+  #journal.show{display:flex}
+  #journal-book{width:min(90vw,720px);height:min(85vh,560px);background:var(--paper);background-image:radial-gradient(ellipse at center,rgba(139,115,85,.1),transparent 70%);border:3px solid var(--wood-dark);box-shadow:0 10px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;position:relative}
+  #journal-book::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(61,42,30,.3)}
+  #journal-header{padding:16px 24px;border-bottom:2px solid var(--wood-dark);display:flex;justify-content:space-between;align-items:center}
+  #journal-header h2{font-size:20px;color:var(--blood);letter-spacing:2px;font-variant:small-caps}
+  #journal-tabs{display:flex;gap:2px;padding:0 16px;border-bottom:1px solid var(--wood-dark);background:rgba(139,115,85,.15);overflow-x:auto}
+  .jtab{padding:10px 14px;cursor:pointer;font-size:12px;border-bottom:2px solid transparent;white-space:nowrap;color:var(--ink);opacity:.7}
+  .jtab.active{border-bottom-color:var(--blood);opacity:1;font-weight:bold}
+  #journal-content{flex:1;overflow-y:auto;padding:20px 24px;font-size:13px;line-height:1.7}
+  .jentry{margin-bottom:16px;padding-bottom:14px;border-bottom:1px dashed rgba(61,42,30,.3)}
+  .jentry-title{font-weight:bold;color:var(--blood);margin-bottom:4px;font-size:14px}
+  .jentry-meta{font-size:10px;opacity:.6;margin-bottom:6px;font-family:monospace}
+  .jentry-body{color:var(--ink);font-style:italic}
+  #journal-close{position:absolute;top:12px;right:12px;background:var(--wood-dark);color:var(--paper);border:none;width:32px;height:32px;cursor:pointer;font-size:18px;border-radius:50%}
+  
+  /* Clue Board */
+  #clueboard{position:absolute;inset:0;background:#1a1510 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><filter id='n'><feTurbulence baseFrequency='.8'/></filter><rect width='100' height='100' filter='url(%23n)' opacity='.08'/></svg>");z-index:30;display:none;backdrop-filter:blur(4px)}
+  #clueboard.show{display:block}
+  #cb-header{position:absolute;top:0;left:0;right:0;padding:12px 20px;background:rgba(26,21,16,.9);color:var(--paper);display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--wood);z-index:2}
+  #cb-header h2{font-size:18px;letter-spacing:2px;font-variant:small-caps;color:var(--lamp)}
+  #cb-board{position:absolute;inset:60px 0 140px 0;overflow:hidden;cursor:grab}
+  #cb-board.dragging{cursor:grabbing}
+  #cb-world{position:absolute;left:0;top:0;width:3000px;height:2000px;transform-origin:0 0}
+  #cb-lines{position:absolute;inset:0;pointer-events:none;width:100%;height:100%}
+  .cb-card{position:absolute;width:180px;background:var(--paper);border:2px solid var(--wood-dark);padding:10px;font-size:11px;box-shadow:3px 4px 10px rgba(0,0,0,.5);cursor:move;user-select:none;transition:box-shadow .15s,transform .15s}
+  .cb-card::before{content:"";position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:10px;height:10px;background:var(--blood);border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,.5)}
+  .cb-card.selected{box-shadow:0 0 0 3px var(--lamp),3px 4px 10px rgba(0,0,0,.5);transform:scale(1.03)}
+  .cb-card.linking{box-shadow:0 0 0 3px var(--moss),3px 4px 10px rgba(0,0,0,.5)}
+  .cb-card-type{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--blood);margin-bottom:4px;font-weight:bold}
+  .cb-card-title{font-weight:bold;color:var(--ink);margin-bottom:6px;font-size:12px}
+  .cb-card-body{font-style:italic;color:var(--ink);line-height:1.4;font-size:11px}
+  .cb-card[data-type="witness"]{background:#e8dcc0}
+  .cb-card[data-type="document"]{background:#d4c4a0}
+  .cb-card[data-type="object"]{background:#c9b890}
+  .cb-card[data-type="location"]{background:#b8a878}
+  .cb-card[data-type="timeline"]{background:#a89868;color:#2a2418}
+  .cb-card[data-type="hypothesis"]{background:#8a3a2a;color:#e8dcc0;border-color:#3d2a1e}
+  #cb-tray{position:absolute;bottom:0;left:0;right:0;height:140px;background:rgba(26,21,16,.95);border-top:2px solid var(--wood);padding:10px;overflow-x:auto;white-space:nowrap}
+  #cb-tray-label{color:var(--lamp);font-size:11px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
+  #cb-tray-cards{display:flex;gap:10px;height:110px;align-items:flex-start}
+  .cb-tray-card{flex:0 0 160px;height:100px;background:var(--paper);border:2px solid var(--wood-dark);padding:8px;font-size:10px;cursor:grab;position:relative;overflow:hidden}
+  .cb-tray-card .cb-card-type{font-size:8px}
+  .cb-tray-card .cb-card-title{font-size:11px;margin-bottom:4px}
+  .cb-tray-card .cb-card-body{font-size:10px;line-height:1.3}
+  #cb-tools{position:absolute;top:60px;right:10px;display:flex;flex-direction:column;gap:6px;z-index:3}
+  .cb-tool{background:rgba(232,220,192,.9);border:2px solid var(--wood-dark);padding:8px;cursor:pointer;font-size:11px;font-family:inherit;border-radius:2px;min-width:90px;text-align:left}
+  .cb-tool.active{background:var(--lamp);color:var(--wood-dark)}
+  #cb-close{background:var(--blood);color:var(--paper);border:none;padding:6px 14px;cursor:pointer;font-family:inherit;font-size:12px;border-radius:2px}
+  
+  /* Puzzle modal */
+  #puzzle{position:absolute;inset:0;background:rgba(10,12,16,.9);z-index:40;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+  #puzzle.show{display:flex}
+  #puzzle-box{width:min(92vw,640px);max-height:85vh;background:var(--paper);border:3px solid var(--wood-dark);box-shadow:0 10px 40px rgba(0,0,0,.7);display:flex;flex-direction:column;overflow:hidden}
+  #puzzle-header{padding:14px 20px;background:var(--wood-dark);color:var(--paper);display:flex;justify-content:space-between;align-items:center}
+  #puzzle-header h3{font-size:16px;letter-spacing:1px}
+  #puzzle-body{padding:20px;overflow-y:auto;flex:1}
+  #puzzle-desc{font-style:italic;color:var(--ink);margin-bottom:16px;line-height:1.5;font-size:13px}
+  #puzzle-close{background:var(--blood);color:var(--paper);border:none;padding:4px 10px;cursor:pointer;font-family:inherit;border-radius:2px}
+  
+  /* Puzzle 1: Church Clock */
+  .clock-container{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .clock-face{width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,#e8dcc0 0%,#c9b890 100%);border:6px solid var(--wood-dark);position:relative;box-shadow:inset 0 0 20px rgba(0,0,0,.3),0 4px 12px var(--shadow)}
+  .clock-mark{position:absolute;left:50%;top:50%;width:2px;height:10px;background:var(--ink);transform-origin:50% 100px}
+  .clock-hand{position:absolute;left:50%;bottom:50%;background:var(--ink);transform-origin:50% 100%;border-radius:2px}
+  .clock-hand.hour{width:5px;height:60px;margin-left:-2.5px}
+  .clock-hand.minute{width:3px;height:85px;margin-left:-1.5px}
+  .clock-center{position:absolute;left:50%;top:50%;width:12px;height:12px;background:var(--blood);border-radius:50%;transform:translate(-50%,-50%);z-index:2}
+  .clock-controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .clock-ctrl{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .clock-ctrl label{font-size:11px;color:var(--ink);letter-spacing:1px;text-transform:uppercase}
+  .clock-ctrl input{width:80px;padding:6px;border:2px solid var(--wood-dark);background:var(--paper);font-family:inherit;text-align:center;font-size:14px}
+  
+  /* Puzzle 2: Torn Photo */
+  .photo-frame{width:100%;max-width:480px;margin:0 auto;background:var(--wood-dark);padding:14px;box-shadow:0 4px 12px var(--shadow)}
+  .photo-canvas{width:100%;aspect-ratio:4/3;background:#2a2418;position:relative;overflow:hidden}
+  .photo-piece{position:absolute;background-size:400% 300%;cursor:grab;border:1px dashed rgba(232,184,112,.4);transition:box-shadow .2s}
+  .photo-piece.placed{border:none;cursor:default;box-shadow:0 0 8px var(--lamp)}
+  .photo-hint{font-size:11px;color:var(--ink);opacity:.7;text-align:center;margin-top:10px;font-style:italic}
+  
+  /* Mobile controls */
+  #mobile-controls{position:absolute;bottom:20px;left:0;right:0;display:none;justify-content:space-between;padding:0 20px;pointer-events:none;z-index:8}
+  #joystick{width:120px;height:120px;background:rgba(232,220,192,.2);border:2px solid rgba(232,220,192,.4);border-radius:50%;pointer-events:auto;position:relative;touch-action:none}
+  #joystick-stick{position:absolute;left:50%;top:50%;width:50px;height:50px;background:rgba(232,220,192,.6);border:2px solid var(--wood-dark);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
+  #mobile-actions{display:flex;flex-direction:column;gap:10px;pointer-events:auto}
+  .mob-btn{width:60px;height:60px;background:rgba(232,220,192,.7);border:2px solid var(--wood-dark);border-radius:50%;font-size:10px;font-family:inherit;color:var(--ink);cursor:pointer;font-weight:bold;letter-spacing:.5px}
+  .mob-btn:active{background:var(--lamp)}
+  @media (hover:none) and (pointer:coarse){
+    #mobile-controls{display:flex}
+    .hud-btn .kbd{display:none}
+  }
+  
+  /* Notification */
+  #notif{position:absolute;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);background:rgba(138,58,42,.95);color:var(--paper);padding:10px 20px;border:2px solid var(--wood-dark);font-size:13px;opacity:0;transition:all .4s;z-index:50;pointer-events:none;max-width:80vw;text-align:center;border-radius:2px}
+  #notif.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  
+  /* Title / Intro */
+  #intro{position:absolute;inset:0;background:#0a0c10;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--paper);text-align:center;padding:20px}
+  #intro h1{font-size:clamp(24px,5vw,42px);letter-spacing:4px;color:var(--lamp);margin-bottom:10px;font-variant:small-caps;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+  #intro h2{font-size:clamp(12px,2.5vw,16px);opacity:.7;margin-bottom:40px;font-style:italic;letter-spacing:2px}
+  #intro p{max-width:560px;line-height:1.8;margin-bottom:30px;font-size:14px;opacity:.9}
+  #start-btn{background:var(--blood);color:var(--paper);border:2px solid var(--wood-dark);padding:12px 30px;font-family:inherit;font-size:15px;cursor:pointer;letter-spacing:3px;font-variant:small-caps;border-radius:2px;transition:all .2s}
+  #start-btn:hover{background:var(--lamp);color:var(--wood-dark)}
+  #load-btn{background:transparent;color:var(--paper);border:1px solid var(--paper);padding:8px 20px;font-family:inherit;font-size:12px;cursor:pointer;margin-top:10px;opacity:.7;border-radius:2px}
+  
+  /* Ending screen */
+  #ending{position:absolute;inset:0;background:#0a0c10;z-index:100;display:none;align-items:center;justify-content:center;flex-direction:column;color:var(--paper);text-align:center;padding:30px;overflow-y:auto}
+  #ending.show{display:flex}
+  #ending h1{color:var(--lamp);font-size:28px;margin-bottom:20px;letter-spacing:3px;font-variant:small-caps}
+  #ending-text{max-width:600px;line-height:1.9;font-size:15px;font-style:italic;margin-bottom:30px}
+  
+  /* Scrollbars */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:rgba(61,42,30,.2)}
+  ::-webkit-scrollbar-thumb{background:var(--wood-dark);border-radius:4px}
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="world"></canvas>
+  
+  <div id="hud">
+    <div id="hud-left">
+      <div id="time-display">PAGI · 08:00</div>
+    </div>
+    <div id="hud-right">
+      <button class="hud-btn" id="btn-journal">Jurnal<span class="kbd">[J]</span></button>
+      <button class="hud-btn" id="btn-clues">Papan Clue<span class="kbd">[C]</span></button>
+      <button class="hud-btn" id="btn-save">Simpan<span class="kbd">[F5]</span></button>
+    </div>
+  </div>
+  
+  <div id="interact-prompt">Tekan E / Tap untuk berinteraksi</div>
+  
+  <div id="mobile-controls">
+    <div id="joystick"><div id="joystick-stick"></div></div>
+    <div id="mobile-actions">
+      <button class="mob-btn" id="mob-interact">AKSI</button>
+      <button class="mob-btn" id="mob-journal">JURNAL</button>
+      <button class="mob-btn" id="mob-clues">CLUE</button>
+    </div>
+  </div>
+  
+  <div id="dialog">
+    <div id="speaker"></div>
+    <div id="dialog-text"></div>
+    <div id="dialog-choices"></div>
+    <div id="dialog-next">▼ lanjut</div>
+  </div>
+  
+  <div id="journal">
+    <div id="journal-book">
+      <div id="journal-header">
+        <h2>Jurnal Investigasi — Elin Vasra</h2>
+        <button id="journal-close">✕</button>
+      </div>
+      <div id="journal-tabs"></div>
+      <div id="journal-content"></div>
+    </div>
+  </div>
+  
+  <div id="clueboard">
+    <div id="cb-header">
+      <h2>Papan Clue — 14 Oktober</h2>
+      <button id="cb-close">Tutup ✕</button>
+    </div>
+    <div id="cb-tools">
+      <button class="cb-tool" data-tool="move">↔ Pindah</button>
+      <button class="cb-tool" data-tool="link">⚯ Hubungkan</button>
+      <button class="cb-tool" data-tool="hypothesis">✚ Hipotesis</button>
+    </div>
+    <div id="cb-board">
+      <svg id="cb-lines"></svg>
+      <div id="cb-world"></div>
+    </div>
+    <div id="cb-tray">
+      <div id="cb-tray-label">Clue belum ditempatkan — seret ke papan</div>
+      <div id="cb-tray-cards"></div>
+    </div>
+  </div>
+  
+  <div id="puzzle">
+    <div id="puzzle-box">
+      <div id="puzzle-header">
+        <h3 id="puzzle-title">Puzzle</h3>
+        <button id="puzzle-close">Tutup ✕</button>
+      </div>
+      <div id="puzzle-body"></div>
+    </div>
+  </div>
+  
+  <div id="notif"></div>
+  
+  <div id="intro">
+    <h1>HARI YANG HILANG DARI TARROW</h1>
+    <h2>The Missing Day of Tarrow</h2>
+    <p>Elin Vasra, arsiparis junior, datang ke kota pesisir Tarrow untuk memperbaiki arsip kota. Ia menemukan bahwa tanggal <strong>14 Oktober</strong>, sepuluh tahun lalu, hilang dari seluruh catatan resmi.</p>
+    <p>Masalahnya: semua penduduk mengingat hari itu. Namun setiap orang memiliki versi yang berbeda.</p>
+    <p style="font-size:12px;opacity:.6;margin-top:20px">WASD / Joystick = jalan · E / Tap = interaksi · J = jurnal · C = papan clue</p>
+    <button id="start-btn">Mulai Investigasi</button>
+    <button id="load-btn" style="display:none">Lanjutkan Simpanan</button>
+  </div>
+  
+  <div id="ending">
+    <h1 id="ending-title"></h1>
+    <div id="ending-text"></div>
+    <button id="start-btn" onclick="location.reload()" style="background:var(--blood);color:var(--paper);border:2px solid var(--wood-dark);padding:12px 30px;font-family:inherit;font-size:15px;cursor:pointer;letter-spacing:3px;font-variant:small-caps;border-radius:2px">Main Lagi</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   HARI YANG HILANG DARI TARROW — Vertical Slice
+   Core engine: canvas world + DOM UI
+   ============================================================ */
+
+// ---------- GLOBAL STATE ----------
+const State = {
+  scene: 'port', // port | archive | church
+  player: { x: 400, y: 500, dir: 0, moving: false },
+  time: { hour: 8, minute: 0, phase: 'pagi' }, // pagi, siang, sore, malam
+  weather: 'fog', // clear, fog, rain, storm
+  flags: {}, // world state flags
+  clues: [], // discovered clue ids
+  board: [], // cards placed on board {id,x,y}
+  links: [], // {a,b,label}
+  hypotheses: [],
+  journal: { people:[], locations:[], documents:[], witnesses:[], objects:[], timeline:[], notes:[] },
+  relationships: {
+    sennard: { trust: 30, fear: 10, respect: 40, met: false },
+    selin:   { trust: 40, fear: 5,  respect: 50, met: false },
+    aldwin:  { trust: 20, fear: 20, respect: 30, met: false }
+  },
+  puzzlesSolved: [],
+  companions: { yuna: { present: true, trust: 60 } },
+  camera: { x: 0, y: 0, zoom: 1 },
+  dialog: { active: false, queue: [], current: null },
+  interactTarget: null,
+  cbTool: 'move',
+  cbLinking: null,
+  cbPan: { x: 0, y: 0, zoom: 0.6 },
+  started: false
+};
+
+// ---------- DATA: CLUES ----------
+const Clues = {
+  missing_page:    { id:'missing_page', type:'document', title:'Halaman Hilang', body:'Catatan sipil 14 Oktober tahun lalu telah dirobek. Bekas potongan masih tertinggal di buku besar.', loc:'archive' },
+  clock_stopped:   { id:'clock_stopped', type:'object', title:'Jam Gereja Berhenti', body:'Jam besar di menara gereja berhenti tepat pukul 03:17. Jarumnya tidak bergerak sejak sepuluh tahun lalu.', loc:'church' },
+  selin_prayer:    { id:'selin_prayer', type:'witness', title:'Doa Selin', body:'"Setiap sore, tepat pukul empat, aku berdoa. Bukan untuk yang hidup. Bukan untuk yang mati. Untuk yang dilupakan." — Selin', loc:'church' },
+  sennard_silence: { id:'sennard_silence', type:'witness', title:'Keheningan Sennard', body:'"Ada malam di mana laut terlalu sunyi. Bahkan ombak seolah menahan napas. Kau akan tahu malam itu jika kau pernah mendengarnya." — Old Sennard', loc:'port' },
+  torn_photo:      { id:'torn_photo', type:'object', title:'Foto Keluarga Robek', body:'Sebuah foto keluarga di bingkai kayu. Satu wajah telah dirobek keluar. Sisa-sisa foto berserakan di lantai arsip.', loc:'archive' },
+  photo_face:      { id:'photo_face', type:'object', title:'Wajah yang Dibuang', body:'Potongan foto yang dirobek menunjukkan seorang perempuan muda bermantel merah. Wajahnya menatap lurus ke kamera.', loc:'archive' },
+  lamp_oil:        { id:'lamp_oil', type:'object', title:'Botol Minyak Lampu', body:'Botol minyak berlabel "Mercusuar Utara — Stok 13 Oktober". Tanggal sebelum hari yang hilang.', loc:'archive' },
+  tide_note:       { id:'tide_note', type:'document', title:'Catatan Pasang', body:'"Pasang rendah ke Isla Ferro hanya terjadi dua kali sebulan. Hari berikutnya: 15 Oktober pagi." — Catatan penjaga mercusuar', loc:'archive' },
+  bell_rust:       { id:'bell_rust', type:'object', title:'Lonceng Berkarat', body:'Lonceng kecil di pintu samping gereja berkarat berat. Tali pemecahnya terputus, bukan aus.', loc:'church' },
+  aldwin_evasive:  { id:'aldwin_evasive', type:'witness', title:'Penghindaran Pendeta', body:'"Beberapa luka lebih baik tidak dibuka, Nona Vasra. Terutama luka yang sudah sepuluh tahun mengering." — Pendeta Aldwin', loc:'church' },
+  yuna_memory:     { id:'yuna_memory', type:'witness', title:'Ingatan Yuna', body:'"Ibuku pernah bilang, Tarrow punya kebiasaan aneh: kami lupa bersama-sama. Seperti sebuah kesepakatan yang tak terucap." — Yuna (companion)', loc:'port' }
+};
+
+// ---------- DATA: NPCs ----------
+const NPCs = {
+  sennard: {
+    name: 'Old Sennard', scene:'port', x:700, y:420, color:'#6b4e3a',
+    dialog: [
+      { id:'first', requires:[], text:'Kau pasti arsiparis baru. Hati-hati dengan buku-buku di sana, Nona. Beberapa halaman lebih baik tetap terrobek.', choices:[
+        {text:'Mengapa halaman dirobek?', next:'why', rel:{trust:-5}},
+        {text:'Saya hanya melakukan tugasku.', next:'duty', rel:{respect:+5}},
+        {text:'(Diam dan pergi)', next:null}
+      ]},
+      { id:'why', requires:[], text:'...Ada malam di mana laut terlalu sunyi. Bahkan ombak seolah menahan napas. Kau akan tahu malam itu jika kau pernah mendengarnya.', choices:[{text:'Malam mana?', next:'which', rel:{trust:-5}}, {text:'(Catat dalam jurnal)', next:null, journal:{witnesses:'sennard_silence'}}] },
+      { id:'which', requires:[], text:'Kau terlalu muda untuk mengingat. Tapi matamu... matamu seperti mata ibumu dulu. Pergi saja. Cari tahu sendiri.', choices:[{text:'(Ibuku?)', next:'mother', rel:{trust:-10}}, {text:'(Pergi)', next:null}] },
+      { id:'mother', requires:[], text:'...Lupakan. Aku sudah bicara terlalu banyak.', choices:[{text:'(Pergi)', next:null}] },
+      { id:'duty', requires:[], text:'Tugas. Ya. Ibumu juga bilang begitu dulu. Sebelum dia...', choices:[{text:'Lanjutkan.', next:'before', rel:{trust:-5}}, {text:'(Pergi)', next:null}] },
+      { id:'before', requires:[], text:'...Sebelum dia pergi. Seperti halaman-halaman itu. Pergi saja, Nona.', choices:[{text:'(Pergi)', next:null}] },
+      { id:'after_clock', requires:['clock_stopped'], text:'Jam itu berhenti pukul 03:17. Bukan karena rusak. Karena seseorang menghentikannya. Dari dalam menara.', choices:[{text:'Siapa?', next:'who_clock', rel:{trust:+5}}, {text:'(Catat)', next:null, journal:{timeline:'clock_0317'}}] },
+      { id:'who_clock', requires:[], text:'Aku tidak melihat. Aku hanya mendengar. Dan memilih untuk tidak mengingat. Itu yang dilakukan semua orang di Tarrow, Nona.', choices:[{text:'(Pergi)', next:null}] }
+    ]
+  },
+  selin: {
+    name: 'Selin', scene:'church', x:640, y:360, color:'#5a4a6b',
+    dialog: [
+      { id:'first', requires:[], text:'Kau datang ke gereja untuk bertanya tentang hari itu, bukan? Semua arsiparis datang untuk hal yang sama.', choices:[
+        {text:'Apa yang terjadi pada 14 Oktober?', next:'what', rel:{trust:-5}},
+        {text:'Saya hanya menyalin arsip.', next:'copy', rel:{respect:+5}},
+        {text:'(Diam)', next:null}
+      ]},
+      { id:'what', requires:[], text:'Setiap sore, tepat pukul empat, aku berdoa. Bukan untuk yang hidup. Bukan untuk yang mati. Untuk yang dilupakan.', choices:[{text:'Siapa yang dilupakan?', next:'who', rel:{trust:-5}}, {text:'(Catat doa)', next:null, journal:{witnesses:'selin_prayer'}}] },
+      { id:'who', requires:[], text:'Mereka yang namanya dihapus dari buku. Mereka yang wajahnya dirobek dari foto. Mereka yang... masih ada, di suatu tempat.', choices:[{text:'Di mana?', next:'where', rel:{trust:+5}}, {text:'(Pergi)', next:null}] },
+      { id:'where', requires:[], text:'Di tempat pasang surut mengizinkan. Di tempat cahaya mercusuar tidak pernah mencapai.', choices:[{text:'Isla Ferro?', next:'isla', rel:{trust:+10, req:'tide_note'}}, {text:'(Pergi)', next:null}] },
+      { id:'isla', requires:['tide_note'], text:'...Kau sudah menemukan catatan itu. Ya. Ke sana. Tapi hati-hati. Beberapa kebenaran lebih berat dari yang kita kira.', choices:[{text:'(Pergi)', next:null, flag:'isla_hinted'}] },
+      { id:'copy', requires:[], text:'Menyalin. Ya. Itulah yang dilakukan ibumu dulu. Sebelum dia berhenti menyalin. Sebelum dia mulai bertanya.', choices:[{text:'(Pergi)', next:null}] }
+    ]
+  },
+  aldwin: {
+    name: 'Pendeta Aldwin', scene:'church', x:480, y:320, color:'#4a5d3a',
+    dialog: [
+      { id:'first', requires:[], text:'Selamat datang di gereja kami, Nona Vasra. Semoga kau menemukan kedamaian di antara arsip-arsip kami.', choices:[
+        {text:'Mengapa jam di menara berhenti?', next:'clock', rel:{trust:-10}},
+        {text:'Terima kasih, Pendeta.', next:'thanks', rel:{respect:+5}},
+        {text:'(Lihat sekeliling)', next:null}
+      ]},
+      { id:'clock', requires:[], text:'Beberapa luka lebih baik tidak dibuka, Nona Vasra. Terutama luka yang sudah sepuluh tahun mengering.', choices:[
+        {text:'Ini bukan luka. Ini fakta.', next:'fact', rel:{trust:-15, fear:+10}},
+        {text:'Maaf, saya tidak bermaksud...', next:'sorry', rel:{trust:+5}},
+        {text:'(Pergi)', next:null}
+      ]},
+      { id:'fact', requires:[], text:'Fakta? Kau masih muda. Kau pikir fakta adalah sesuatu yang tertulis. Di Tarrow, fakta adalah sesuatu yang kita sepakati untuk dilupakan.', choices:[{text:'(Catat)', next:null, journal:{witnesses:'aldwin_evasive'}}] },
+      { id:'sorry', requires:[], text:'Tidak apa-apa. Aku tahu kau hanya melakukan tugasmu. Pergilah. Doakan jiwa-jiwa di sini jika kau berkenan.', choices:[{text:'(Pergi)', next:null}] },
+      { id:'thanks', requires:[], text:'Gereja ini selalu terbuka bagi mereka yang mencari. Tapi beberapa pintu... lebih baik tetap tertutup.', choices:[{text:'(Pergi)', next:null}] },
+      { id:'after_photo', requires:['torn_photo'], text:'Foto itu... dari mana kau mendapatkannya? Itu milik keluarga yang sudah lama pergi. Pergi untuk selamanya.', choices:[
+        {text:'Perempuan bermantel merah — siapa dia?', next:'red', rel:{trust:-10}},
+        {text:'(Pergi)', next:null}
+      ]},
+      { id:'red', requires:[], text:'...Kau tidak seharusnya melihat itu. Itu bukan urusanmu. Itu bukan urusan siapa pun lagi.', choices:[{text:'(Pergi)', next:null, flag:'aldwin_suspicious'}] }
+    ]
+  }
+};
+
+// ---------- DATA: SCENES ----------
+const Scenes = {
+  port: {
+    name: 'Pelabuhan Tarrow',
+    bg: '#4a5d6e',
+    bounds: { w: 1200, h: 800 },
+    exits: [ { x: 1150, y: 400, w: 50, h: 120, to: 'archive', px: 80, py: 400, label: '→ Arsip Kota' } ],
+    props: [
+      { type:'boat', x:200, y:600, w:180, h:80 },
+      { type:'boat', x:450, y:650, w:140, h:60 },
+      { type:'dock', x:100, y:500, w:400, h:30 },
+      { type:'crate', x:800, y:500, w:40, h:40 },
+      { type:'crate', x:860, y:520, w:40, h:40 },
+      { type:'lamp', x:600, y:380 },
+      { type:'lamp', x:900, y:380 },
+      { type:'sign', x:1050, y:380, text:'ARSIP →' }
+    ],
+    interactables: [
+      { id:'boat_log', x:250, y:620, w:80, h:40, label:'Log Kapal', action:() => {
+        notify('Log kapal terakhir tercatat 13 Oktober. Tidak ada entri setelahnya.');
+        addClue('lamp_oil');
+      }}
+    ]
+  },
+  archive: {
+    name: 'Arsip Kota',
+    bg: '#3d2a1e',
+    bounds: { w: 1200, h: 800 },
+    exits: [
+      { x: 0, y: 400, w: 50, h: 120, to: 'port', px: 1100, py: 400, label: '← Pelabuhan' },
+      { x: 1150, y: 400, w: 50, h: 120, to: 'church', px: 80, py: 400, label: '→ Gereja' }
+    ],
+    props: [
+      { type:'shelf', x:150, y:200, w:200, h:40 },
+      { type:'shelf', x:150, y:300, w:200, h:40 },
+      { type:'shelf', x:150, y:400, w:200, h:40 },
+      { type:'shelf', x:150, y:500, w:200, h:40 },
+      { type:'desk', x:500, y:400, w:200, h:120 },
+      { type:'shelf', x:850, y:200, w:200, h:40 },
+      { type:'shelf', x:850, y:300, w:200, h:40 },
+      { type:'shelf', x:850, y:400, w:200, h:40 },
+      { type:'lamp', x:600, y:380 }
+    ],
+    interactables: [
+      { id:'big_book', x:560, y:440, w:80, h:40, label:'Buku Besar Catatan Sipil', action:() => {
+        openPuzzle('missing_page');
+      }},
+      { id:'photo_frame', x:720, y:440, w:60, h:60, label:'Foto Keluarga', action:() => {
+        if (State.puzzlesSolved.includes('torn_photo')) {
+          notify('Foto sudah tersusun. Perempuan bermantel merah menatapmu.');
+          return;
+        }
+        openPuzzle('torn_photo');
+      }}
+    ]
+  },
+  church: {
+    name: 'Gereja Setengah Runtuh',
+    bg: '#2a2418',
+    bounds: { w: 1200, h: 800 },
+    exits: [
+      { x: 0, y: 400, w: 50, h: 120, to: 'archive', px: 1100, py: 400, label: '← Arsip' }
+    ],
+    props: [
+      { type:'pew', x:300, y:450, w:80, h:40 },
+      { type:'pew', x:300, y:520, w:80, h:40 },
+      { type:'pew', x:300, y:590, w:80, h:40 },
+      { type:'pew', x:820, y:450, w:80, h:40 },
+      { type:'pew', x:820, y:520, w:80, h:40 },
+      { type:'pew', x:820, y:590, w:80, h:40 },
+      { type:'altar', x:560, y:200, w:100, h:60 },
+      { type:'stained', x:560, y:100, w:100, h:80 },
+      { type:'clock_tower', x:560, y:40, w:100, h:60 }
+    ],
+    interactables: [
+      { id:'church_clock', x:580, y:50, w:60, h:50, label:'Jam Gereja', action:() => {
+        openPuzzle('church_clock');
+      }},
+      { id:'bell', x:900, y:250, w:50, h:70, label:'Lonceng Berkarat', action:() => {
+        notify('Lonceng ini berkarat berat. Talinya terputus, bukan aus. Seseorang memotongnya.');
+        addClue('bell_rust');
+      }},
+      { id:'altar_book', x:580, y:220, w:60, h:40, label:'Buku Doa', action:() => {
+        notify('Halaman 14 Oktober ditandai dengan noda lilin. Seseorang membacakan doa khusus hari itu.');
+        addJournal('documents','altar_note','Buku Doa Gereja','Halaman 14 Oktober ditandai noda lilin. Doa khusus dibacakan — bukan untuk orang mati biasa.');
+      }}
+    ]
+  }
+};
+
+// ---------- CANVAS SETUP ----------
+const canvas = document.getElementById('world');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0;
+function resize() {
+  W = canvas.width = window.innerWidth * devicePixelRatio;
+  H = canvas.height = window.innerHeight * devicePixelRatio;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ---------- INPUT ----------
+const Input = { keys: {}, joy: { active: false, dx: 0, dy: 0 } };
+window.addEventListener('keydown', e => {
+  Input.keys[e.key.toLowerCase()] = true;
+  if (e.key === 'j' || e.key === 'J') toggleJournal();
+  if (e.key === 'c' || e.key === 'C') toggleClueBoard();
+  if (e.key === 'e' || e.key === 'E') tryInteract();
+  if (e.key === 'Escape') closeAll();
+  if (e.key === 'F5') { e.preventDefault(); saveGame(); }
+});
+window.addEventListener('keyup', e => { Input.keys[e.key.toLowerCase()] = false; });
+
+// Joystick
+const joy = document.getElementById('joystick');
+const joyStick = document.getElementById('joystick-stick');
+let joyCenter = { x: 0, y: 0 };
+function joyStart(e) {
+  const r = joy.getBoundingClientRect();
+  joyCenter = { x: r.left + r.width/2, y: r.top + r.height/2 };
+  Input.joy.active = true;
+  joyMove(e);
+}
+function joyMove(e) {
+  if (!Input.joy.active) return;
+  const t = e.touches ? e.touches[0] : e;
+  let dx = t.clientX - joyCenter.x;
+  let dy = t.clientY - joyCenter.y;
+  const dist = Math.hypot(dx,dy);
+  const max = 45;
+  if (dist > max) { dx = dx/dist*max; dy = dy/dist*max; }
+  joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  Input.joy.dx = dx/max;
+  Input.joy.dy = dy/max;
+}
+function joyEnd() {
+  Input.joy.active = false;
+  Input.joy.dx = 0; Input.joy.dy = 0;
+  joyStick.style.transform = 'translate(-50%,-50%)';
+}
+joy.addEventListener('touchstart', joyStart);
+joy.addEventListener('touchmove', joyMove);
+joy.addEventListener('touchend', joyEnd);
+joy.addEventListener('mousedown', joyStart);
+window.addEventListener('mousemove', joyMove);
+window.addEventListener('mouseup', joyEnd);
+
+// Mobile buttons
+document.getElementById('mob-interact').addEventListener('click', tryInteract);
+document.getElementById('mob-journal').addEventListener('click', toggleJournal);
+document.getElementById('mob-clues').addEventListener('click', toggleClueBoard);
+
+// HUD buttons
+document.getElementById('btn-journal').addEventListener('click', toggleJournal);
+document.getElementById('btn-clues').addEventListener('click', toggleClueBoard);
+document.getElementById('btn-save').addEventListener('click', () => { saveGame(); notify('Permainan disimpan.'); });
+
+// Canvas tap to interact (mobile)
+canvas.addEventListener('click', e => {
+  if (State.dialog.active) { advanceDialog(); return; }
+  if (State.interactTarget) tryInteract();
+});
+
+// ---------- GAME LOOP ----------
+let lastTime = 0;
+function loop(t) {
+  const dt = Math.min(0.05, (t - lastTime) / 1000);
+  lastTime = t;
+  if (State.started) {
+    update(dt);
+    render();
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ---------- UPDATE ----------
+function update(dt) {
+  if (State.dialog.active || document.getElementById('journal').classList.contains('show') ||
+      document.getElementById('clueboard').classList.contains('show') ||
+      document.getElementById('puzzle').classList.contains('show')) return;
+  
+  // Movement
+  let dx = 0, dy = 0;
+  if (Input.keys['w'] || Input.keys['arrowup']) dy -= 1;
+  if (Input.keys['s'] || Input.keys['arrowdown']) dy += 1;
+  if (Input.keys['a'] || Input.keys['arrowleft']) dx -= 1;
+  if (Input.keys['d'] || Input.keys['arrowright']) dx += 1;
+  dx += Input.joy.dx;
+  dy += Input.joy.dy;
+  const mag = Math.hypot(dx,dy);
+  if (mag > 0.1) {
+    dx /= mag; dy /= mag;
+    State.player.x += dx * 180 * dt;
+    State.player.y += dy * 180 * dt;
+    State.player.dir = Math.atan2(dy, dx);
+    State.player.moving = true;
+  } else {
+    State.player.moving = false;
+  }
+  
+  // Bounds
+  const scene = Scenes[State.scene];
+  State.player.x = Math.max(40, Math.min(scene.bounds.w - 40, State.player.x));
+  State.player.y = Math.max(40, Math.min(scene.bounds.h - 40, State.player.y));
+  
+  // Exits
+  for (const ex of scene.exits) {
+    if (State.player.x > ex.x && State.player.x < ex.x + ex.w &&
+        State.player.y > ex.y && State.player.y < ex.y + ex.h) {
+      changeScene(ex.to, ex.px, ex.py);
+      break;
+    }
+  }
+  
+  // Camera follow
+  const targetCamX = State.player.x - window.innerWidth/2;
+  const targetCamY = State.player.y - window.innerHeight/2;
+  State.camera.x += (targetCamX - State.camera.x) * 0.1;
+  State.camera.y += (targetCamY - State.camera.y) * 0.1;
+  State.camera.x = Math.max(0, Math.min(scene.bounds.w - window.innerWidth, State.camera.x));
+  State.camera.y = Math.max(0, Math.min(scene.bounds.h - window.innerHeight, State.camera.y));
+  
+  // Interaction detection
+  State.interactTarget = null;
+  const prompt = document.getElementById('interact-prompt');
+  
+  // NPCs
+  for (const [id, npc] of Object.entries(NPCs)) {
+    if (npc.scene !== State.scene) continue;
+    const d = Math.hypot(npc.x - State.player.x, npc.y - State.player.y);
+    if (d < 60) {
+      State.interactTarget = { type: 'npc', id };
+      prompt.textContent = `Bicara dengan ${npc.name} [E]`;
+      prompt.classList.add('show');
+      break;
+    }
+  }
+  // Interactables
+  if (!State.interactTarget) {
+    for (const it of scene.interactables) {
+      if (State.player.x > it.x - 20 && State.player.x < it.x + it.w + 20 &&
+          State.player.y > it.y - 20 && State.player.y < it.y + it.h + 20) {
+        State.interactTarget = { type: 'item', id: it.id, data: it };
+        prompt.textContent = `${it.label} [E]`;
+        prompt.classList.add('show');
+        break;
+      }
+    }
+  }
+  if (!State.interactTarget) prompt.classList.remove('show');
+  
+  // Time progression (slow)
+  State.time.minute += dt * 5; // 1 real second = 5 game minutes
+  if (State.time.minute >= 60) {
+    State.time.minute = 0;
+    State.time.hour++;
+    if (State.time.hour >= 24) State.time.hour = 0;
+  }
+  updateTimeDisplay();
+}
+
+function updateTimeDisplay() {
+  const h = State.time.hour;
+  let phase = 'malam';
+  if (h >= 5 && h < 11) phase = 'pagi';
+  else if (h >= 11 && h < 15) phase = 'siang';
+  else if (h >= 15 && h < 19) phase = 'sore';
+  State.time.phase = phase;
+  const hh = String(h).padStart(2,'0');
+  const mm = String(Math.floor(State.time.minute)).padStart(2,'0');
+  document.getElementById('time-display').textContent = `${phase.toUpperCase()} · ${hh}:${mm}`;
+}
+
+// ---------- RENDER ----------
+function render() {
+  const scene = Scenes[State.scene];
+  ctx.save();
+  ctx.clearRect(0,0,window.innerWidth,window.innerHeight);
+  
+  // Sky/ambient based on time
+  const timeColor = getTimeColor();
+  ctx.fillStyle = timeColor;
+  ctx.fillRect(0,0,window.innerWidth,window.innerHeight);
+  
+  ctx.translate(-State.camera.x, -State.camera.y);
+  
+  // Ground
+  drawGround(scene);
+  
+  // Props
+  for (const p of scene.props) drawProp(p);
+  
+  // Exits
+  for (const ex of scene.exits) {
+    ctx.fillStyle = 'rgba(232,184,112,0.2)';
+    ctx.fillRect(ex.x, ex.y, ex.w, ex.h);
+    ctx.strokeStyle = 'rgba(232,184,112,0.6)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ex.x, ex.y, ex.w, ex.h);
+    ctx.fillStyle = 'rgba(232,220,192,0.9)';
+    ctx.font = '12px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText(ex.label, ex.x + ex.w/2, ex.y - 8);
+  }
+  
+  // Interactables (highlight)
+  for (const it of scene.interactables) {
+    ctx.fillStyle = 'rgba(232,184,112,0.15)';
+    ctx.fillRect(it.x, it.y, it.w, it.h);
+    ctx.strokeStyle = 'rgba(232,184,112,0.5)';
+    ctx.setLineDash([4,4]);
+    ctx.strokeRect(it.x, it.y, it.w, it.h);
+    ctx.setLineDash([]);
+  }
+  
+  // NPCs
+  for (const [id, npc] of Object.entries(NPCs)) {
+    if (npc.scene !== State.scene) continue;
+    drawNPC(npc, id);
+  }
+  
+  // Player
+  drawPlayer();
+  
+  // Fog overlay
+  if (State.weather === 'fog') {
+    ctx.fillStyle = 'rgba(184,194,201,0.25)';
+    ctx.fillRect(State.camera.x, State.camera.y, window.innerWidth, window.innerHeight);
+  }
+  
+  ctx.restore();
+  
+  // Vignette
+  const grd = ctx.createRadialGradient(window.innerWidth/2, window.innerHeight/2, Math.min(window.innerWidth,window.innerHeight)/3, window.innerWidth/2, window.innerHeight/2, Math.max(window.innerWidth,window.innerHeight)/1.2);
+  grd.addColorStop(0, 'rgba(0,0,0,0)');
+  grd.addColorStop(1, 'rgba(0,0,0,0.6)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0,0,window.innerWidth,window.innerHeight);
+}
+
+function getTimeColor() {
+  const h = State.time.hour;
+  if (h >= 5 && h < 7) return '#4a5060';
+  if (h >= 7 && h < 11) return '#6a7888';
+  if (h >= 11 && h < 15) return '#7a8898';
+  if (h >= 15 && h < 18) return '#6a6058';
+  if (h >= 18 && h < 20) return '#3a3040';
+  return '#1a1d24';
+}
+
+function drawGround(scene) {
+  // Base
+  ctx.fillStyle = scene.bg;
+  ctx.fillRect(0,0,scene.bounds.w,scene.bounds.h);
+  
+  // Texture (watercolor-like noise)
+  if (State.scene === 'port') {
+    // Water
+    const t = Date.now() / 1000;
+    ctx.fillStyle = '#3a4d5e';
+    ctx.fillRect(0, 550, scene.bounds.w, 250);
+    // Waves
+    ctx.strokeStyle = 'rgba(184,194,201,0.3)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      for (let x = 0; x < scene.bounds.w; x += 20) {
+        const y = 580 + i*30 + Math.sin(x/40 + t + i)*5;
+        if (x === 0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+    // Dock planks
+    ctx.fillStyle = '#5a4030';
+    for (let x = 100; x < 500; x += 30) {
+      ctx.fillRect(x, 500, 25, 30);
+    }
+  } else if (State.scene === 'archive') {
+    // Floorboards
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 1;
+    for (let y = 0; y < scene.bounds.h; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y); ctx.lineTo(scene.bounds.w, y);
+      ctx.stroke();
+    }
+    // Lamp glow
+    const lampGlow = ctx.createRadialGradient(600, 380, 10, 600, 380, 250);
+    lampGlow.addColorStop(0, 'rgba(232,184,112,0.3)');
+    lampGlow.addColorStop(1, 'rgba(232,184,112,0)');
+    ctx.fillStyle = lampGlow;
+    ctx.fillRect(0,0,scene.bounds.w,scene.bounds.h);
+  } else if (State.scene === 'church') {
+    // Stone floor
+    ctx.fillStyle = '#3a3428';
+    for (let x = 0; x < scene.bounds.w; x += 80) {
+      for (let y = 300; y < scene.bounds.h; y += 60) {
+        ctx.fillRect(x+2, y+2, 76, 56);
+      }
+    }
+    // Stained glass light
+    const light = ctx.createRadialGradient(610, 180, 20, 610, 180, 300);
+    light.addColorStop(0, 'rgba(232,184,112,0.4)');
+    light.addColorStop(1, 'rgba(232,184,112,0)');
+    ctx.fillStyle = light;
+    ctx.fillRect(0,0,scene.bounds.w,scene.bounds.h);
+  }
+}
+
+function drawProp(p) {
+  ctx.save();
+  if (p.type === 'boat') {
+    ctx.fillStyle = '#5a4030';
+    ctx.beginPath();
+    ctx.ellipse(p.x + p.w/2, p.y + p.h/2, p.w/2, p.h/2, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(p.x + p.w/2 - 3, p.y - 20, 6, 40);
+  } else if (p.type === 'dock') {
+    ctx.fillStyle = '#5a4030';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 2;
+    for (let x = p.x; x < p.x + p.w; x += 25) {
+      ctx.beginPath(); ctx.moveTo(x, p.y); ctx.lineTo(x, p.y+p.h); ctx.stroke();
+    }
+  } else if (p.type === 'crate') {
+    ctx.fillStyle = '#6b4e3a';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 2;
+    ctx.strokeRect(p.x, p.y, p.w, p.h);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x+p.w, p.y+p.h); ctx.stroke();
+  } else if (p.type === 'lamp') {
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(p.x-2, p.y, 4, 40);
+    ctx.fillStyle = '#e8b870';
+    ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill();
+    const glow = ctx.createRadialGradient(p.x, p.y, 4, p.x, p.y, 60);
+    glow.addColorStop(0, 'rgba(232,184,112,0.5)');
+    glow.addColorStop(1, 'rgba(232,184,112,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(p.x-60, p.y-60, 120, 120);
+  } else if (p.type === 'sign') {
+    ctx.fillStyle = '#5a4030';
+    ctx.fillRect(p.x, p.y, 80, 40);
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 2; ctx.strokeRect(p.x, p.y, 80, 40);
+    ctx.fillStyle = '#e8dcc0'; ctx.font = 'bold 11px Georgia'; ctx.textAlign = 'center';
+    ctx.fillText(p.text, p.x+40, p.y+25);
+  } else if (p.type === 'shelf') {
+    ctx.fillStyle = '#4a3020';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 2; ctx.strokeRect(p.x, p.y, p.w, p.h);
+    // Books
+    for (let i = 0; i < 8; i++) {
+      ctx.fillStyle = ['#8a3a2a','#5a4a6b','#4a5d3a','#6b4e3a','#3a4d5e','#8a6a3a','#5a3a4a','#4a6b5a'][i];
+      ctx.fillRect(p.x + 5 + i*24, p.y + 5, 18, p.h - 10);
+    }
+  } else if (p.type === 'desk') {
+    ctx.fillStyle = '#5a4030';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 3; ctx.strokeRect(p.x, p.y, p.w, p.h);
+  } else if (p.type === 'pew') {
+    ctx.fillStyle = '#4a3020';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 2; ctx.strokeRect(p.x, p.y, p.w, p.h);
+  } else if (p.type === 'altar') {
+    ctx.fillStyle = '#6b4e3a';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 3; ctx.strokeRect(p.x, p.y, p.w, p.h);
+    // Cross
+    ctx.fillStyle = '#e8dcc0';
+    ctx.fillRect(p.x + p.w/2 - 3, p.y - 30, 6, 40);
+    ctx.fillRect(p.x + p.w/2 - 12, p.y - 20, 24, 6);
+  } else if (p.type === 'stained') {
+    const colors = ['#8a3a2a','#4a5d6e','#5a6b4a','#e8b870'];
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(p.x + i*(p.w/4), p.y, p.w/4, p.h);
+    }
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 3; ctx.strokeRect(p.x, p.y, p.w, p.h);
+    // Arch
+    ctx.beginPath();
+    ctx.arc(p.x + p.w/2, p.y + p.h, p.w/2, Math.PI, 0);
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 3; ctx.stroke();
+  } else if (p.type === 'clock_tower') {
+    ctx.fillStyle = '#4a3020';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 3; ctx.strokeRect(p.x, p.y, p.w, p.h);
+    // Clock face
+    ctx.fillStyle = '#e8dcc0';
+    ctx.beginPath(); ctx.arc(p.x + p.w/2, p.y + p.h/2, 22, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 2; ctx.stroke();
+    // Hands (stopped at 3:17)
+    ctx.save();
+    ctx.translate(p.x + p.w/2, p.y + p.h/2);
+    ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0,0);
+    const ha = (3 + 17/60) / 12 * Math.PI * 2 - Math.PI/2;
+    ctx.lineTo(Math.cos(ha)*12, Math.sin(ha)*12); ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0,0);
+    const ma = 17/60 * Math.PI * 2 - Math.PI/2;
+    ctx.lineTo(Math.cos(ma)*18, Math.sin(ma)*18); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawNPC(npc, id) {
+  const bob = Math.sin(Date.now()/500 + id.length) * 2;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(npc.x, npc.y + 24, 14, 4, 0, 0, Math.PI*2); ctx.fill();
+  // Body
+  ctx.fillStyle = npc.color;
+  ctx.fillRect(npc.x - 10, npc.y - 10 + bob, 20, 30);
+  // Head
+  ctx.fillStyle = '#d4b896';
+  ctx.beginPath(); ctx.arc(npc.x, npc.y - 18 + bob, 10, 0, Math.PI*2); ctx.fill();
+  // Name
+  ctx.fillStyle = 'rgba(232,220,192,0.9)';
+  ctx.font = 'bold 11px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText(npc.name, npc.x, npc.y - 34 + bob);
+  // Interaction indicator
+  const d = Math.hypot(npc.x - State.player.x, npc.y - State.player.y);
+  if (d < 60) {
+    ctx.fillStyle = 'rgba(232,184,112,0.8)';
+    ctx.font = 'bold 16px Georgia';
+    ctx.fillText('!', npc.x, npc.y - 44 + bob);
+  }
+}
+
+function drawPlayer() {
+  const p = State.player;
+  const bob = p.moving ? Math.sin(Date.now()/100) * 2 : 0;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath(); ctx.ellipse(p.x, p.y + 24, 14, 4, 0, 0, Math.PI*2); ctx.fill();
+  // Body (Elin - blue coat)
+  ctx.fillStyle = '#3a4d5e';
+  ctx.fillRect(p.x - 10, p.y - 10 + bob, 20, 30);
+  // Head
+  ctx.fillStyle = '#d4b896';
+  ctx.beginPath(); ctx.arc(p.x, p.y - 18 + bob, 10, 0, Math.PI*2); ctx.fill();
+  // Hair
+  ctx.fillStyle = '#3d2a1e';
+  ctx.beginPath(); ctx.arc(p.x, p.y - 22 + bob, 10, Math.PI, 0); ctx.fill();
+  // Direction indicator
+  ctx.fillStyle = '#e8b870';
+  ctx.beginPath();
+  ctx.arc(p.x + Math.cos(p.dir)*14, p.y + Math.sin(p.dir)*14 + bob, 3, 0, Math.PI*2);
+  ctx.fill();
+}
+
+// ---------- SCENE TRANSITIONS ----------
+function changeScene(to, px, py) {
+  State.scene = to;
+  State.player.x = px;
+  State.player.y = py;
+  notify(Scenes[to].name);
+  // Trigger first-visit events
+  if (to === 'archive' && !State.flags.archive_visited) {
+    State.flags.archive_visited = true;
+    setTimeout(() => {
+      notify('Buku-buku berdebu. Bau kertas tua. Dan sesuatu yang hilang...');
+      addJournal('locations','archive_first','Arsip Kota','Bangunan tua di pusat Tarrow. Buku-buku catatan sipil dari abad lalu berjejer di rak. Beberapa halaman tampak telah dirobek.');
+    }, 1500);
+  }
+  if (to === 'church' && !State.flags.church_visited) {
+    State.flags.church_visited = true;
+    setTimeout(() => {
+      notify('Gereja tua. Cahaya berwarna menembus kaca patri. Dan jam di menara... berhenti.');
+      addJournal('locations','church_first','Gereja Setengah Runtuh','Gereja tua di tepi tebing. Jam di menara berhenti pukul 03:17. Seseorang bernama Selin tampak berdoa di sudut.');
+    }, 1500);
+  }
+}
+
+// ---------- INTERACTION ----------
+function tryInteract() {
+  if (State.dialog.active) { advanceDialog(); return; }
+  if (!State.interactTarget) return;
+  if (State.interactTarget.type === 'npc') {
+    startDialog(State.interactTarget.id);
+  } else if (State.interactTarget.type === 'item') {
+    State.interactTarget.data.action();
+  }
+}
+
+// ---------- DIALOG ----------
+function startDialog(npcId) {
+  const npc = NPCs[npcId];
+  State.relationships[npcId].met = true;
+  // Find appropriate dialog node
+  let node = null;
+  // Prefer conditional nodes first
+  for (const d of npc.dialog) {
+    if (d.requires && d.requires.every(r => State.clues.includes(r) || State.flags[r] || State.puzzlesSolved.includes(r))) {
+      // Pick the most specific one (longest requires)
+      if (!node || d.requires.length > node.requires.length) node = d;
+    }
+  }
+  if (!node) node = npc.dialog[0];
+  showDialog(npc.name, node.text, node.choices, npcId, node.id);
+}
+
+function showDialog(speaker, text, choices, npcId, nodeId) {
+  State.dialog.active = true;
+  State.dialog.current = { speaker, text, choices, npcId, nodeId };
+  document.getElementById('speaker').textContent = speaker;
+  document.getElementById('dialog-text').textContent = '';
+  document.getElementById('dialog-choices').innerHTML = '';
+  document.getElementById('dialog').classList.add('show');
+  document.getElementById('dialog-next').style.display = 'none';
+  // Typewriter
+  let i = 0;
+  const el = document.getElementById('dialog-text');
+  const type = () => {
+    if (!State.dialog.active) return;
+    if (i < text.length) {
+      el.textContent += text[i++];
+      setTimeout(type, 25);
+    } else {
+      showChoices(choices, npcId);
+    }
+  };
+  type();
+}
+
+function showChoices(choices, npcId) {
+  const el = document.getElementById('dialog-choices');
+  el.innerHTML = '';
+  if (!choices || choices.length === 0) {
+    const c = document.createElement('div');
+    c.className = 'choice';
+    c.textContent = '(Tutup)';
+    c.onclick = () => closeDialog();
+    el.appendChild(c);
+    return;
+  }
+  for (const ch of choices) {
+    const c = document.createElement('div');
+    c.className = 'choice';
+    // Check requirements
+    if (ch.req && !State.clues.includes(ch.req) && !State.flags[ch.req]) {
+      c.classList.add('locked');
+      c.textContent = ch.text + ' [perlu petunjuk lain]';
+    } else {
+      c.textContent = ch.text;
+      c.onclick = () => handleChoice(ch, npcId);
+    }
+    el.appendChild(c);
+  }
+}
+
+function handleChoice(ch, npcId) {
+  // Apply relationship change
+  if (ch.rel) {
+    for (const [k,v] of Object.entries(ch.rel)) {
+      State.relationships[npcId][k] = Math.max(0, Math.min(100, State.relationships[npcId][k] + v));
+    }
+  }
+  // Add journal
+  if (ch.journal) {
+    for (const [cat, id] of Object.entries(ch.journal)) {
+      const clue = Clues[id];
+      if (clue) addJournal(cat, id, clue.title, clue.body);
+      else addJournal(cat, id, id, 'Catatan ditambahkan.');
+    }
+  }
+  // Set flag
+  if (ch.flag) State.flags[ch.flag] = true;
+  // Next dialog
+  if (ch.next) {
+    const npc = NPCs[npcId];
+    const nextNode = npc.dialog.find(d => d.id === ch.next);
+    if (nextNode) {
+      showDialog(npc.name, nextNode.text, nextNode.choices, npcId, nextNode.id);
+      return;
+    }
+  }
+  closeDialog();
+}
+
+function advanceDialog() {
+  const el = document.getElementById('dialog-text');
+  const full = State.dialog.current.text;
+  if (el.textContent.length < full.length) {
+    el.textContent = full;
+    showChoices(State.dialog.current.choices, State.dialog.current.npcId);
+  }
+}
+
+function closeDialog() {
+  State.dialog.active = false;
+  State.dialog.current = null;
+  document.getElementById('dialog').classList.remove('show');
+}
+
+document.getElementById('dialog').addEventListener('click', e => {
+  if (e.target.classList.contains('choice')) return;
+  advanceDialog();
+});
+
+// ---------- CLUE SYSTEM ----------
+function addClue(id) {
+  if (State.clues.includes(id)) return;
+  State.clues.push(id);
+  const c = Clues[id];
+  notify(`Clue ditemukan: ${c.title}`);
+  addJournal(
+    c.type === 'witness' ? 'witnesses' :
+    c.type === 'document' ? 'documents' :
+    c.type === 'location' ? 'locations' : 'objects',
+    id, c.title, c.body
+  );
+  // Add to clue tray
+  addClueToTray(id);
+}
+
+function addJournal(cat, id, title, body) {
+  if (State.journal[cat].find(e => e.id === id)) return;
+  State.journal[cat].push({
+    id, title, body,
+    time: `${String(State.time.hour).padStart(2,'0')}:${String(Math.floor(State.time.minute)).padStart(2,'0')}`,
+    scene: Scenes[State.scene].name
+  });
+}
+
+// ---------- PUZZLES ----------
+function openPuzzle(id) {
+  const puz = document.getElementById('puzzle');
+  const body = document.getElementById('puzzle-body');
+  const title = document.getElementById('puzzle-title');
+  body.innerHTML = '';
+  
+  if (id === 'missing_page') {
+    title.textContent = 'Halaman yang Hilang';
+    body.innerHTML = `
+      <div id="puzzle-desc">Buku besar catatan sipil terbuka di hadapanmu. Halaman 14 Oktober telah dirobek dengan hati-hati. Sisa-sisa potongan masih ada di antara halaman.</div>
+      <div style="text-align:center;margin:20px 0">
+        <div style="display:inline-block;background:var(--paper-dark);padding:20px;border:2px solid var(--wood-dark);max-width:400px">
+          <div style="font-style:italic;color:var(--ink);line-height:1.6;font-size:13px">
+            "Catatan untuk bulan Oktober tahun lalu...<br>
+            12 Oktober — <em>cuaca cerah</em><br>
+            13 Oktober — <em>angin dari utara</em><br>
+            <span style="color:var(--blood);font-weight:bold">14 Oktober — [HALAMAN DIROBEK]</span><br>
+            15 Oktober — <em>pasang rendah, nelayan kembali</em>"
+          </div>
+          <div style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--wood);font-size:11px;color:var(--ink);opacity:.8">
+            Di tepi sobekan, tulisan samar: <em>"...mereka tidak boleh tahu..."</em>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center">
+        <button class="hud-btn" onclick="solveMissingPage()">Catat dalam jurnal & ambil potongan</button>
+      </div>
+    `;
+  } else if (id === 'church_clock') {
+    title.textContent = 'Jam Gereja Berhenti';
+    body.innerHTML = `
+      <div id="puzzle-desc">Jam besar di menara berhenti. Jarum jam menunjuk angka 3, jarum menit menunjuk angka 17 menit. Mekanisme di belakangnya dapat diputar manual. Apa yang terjadi jika kau memutar jarum ke waktu yang "seharusnya"?</div>
+      <div class="clock-container">
+        <div class="clock-face" id="clock-face">
+          <div class="clock-hand hour" id="hour-hand"></div>
+          <div class="clock-hand minute" id="minute-hand"></div>
+          <div class="clock-center"></div>
+        </div>
+        <div class="clock-controls">
+          <div class="clock-ctrl">
+            <label>Jam</label>
+            <input type="number" id="clock-hour" min="1" max="12" value="3">
+          </div>
+          <div class="clock-ctrl">
+            <label>Menit</label>
+            <input type="number" id="clock-minute" min="0" max="59" value="17">
+          </div>
+        </div>
+        <div style="font-size:11px;opacity:.7;text-align:center;max-width:400px">
+          Petunjuk: Sennard bilang "seseorang menghentikannya dari dalam menara". Selin berdoa "pukul empat, untuk yang dilupakan". Jika jam dihentikan pada 03:17, mungkin itu waktu <em>sebelum</em> sesuatu terjadi — atau waktu seseorang mencoba <em>menyembunyikan</em>.
+        </div>
+        <button class="hud-btn" onclick="tryClock()">Putar jarum ke waktu ini</button>
+      </div>
+    `;
+    updateClockVisual();
+    document.getElementById('clock-hour').addEventListener('input', updateClockVisual);
+    document.getElementById('clock-minute').addEventListener('input', updateClockVisual);
+  } else if (id === 'torn_photo') {
+    title.textContent = 'Foto Keluarga yang Dirobek';
+    body.innerHTML = `
+      <div id="puzzle-desc">Sebuah foto keluarga di bingkai kayu. Satu wajah telah dirobek keluar. Potongan foto berserakan. Susun kembali potongan-potongan itu ke tempatnya.</div>
+      <div class="photo-frame">
+        <div class="photo-canvas" id="photo-canvas"></div>
+      </div>
+      <div class="photo-hint">Seret potongan ke posisi yang tepat. Perhatikan pola pakaian dan latar belakang.</div>
+      <div style="text-align:center;margin-top:12px">
+        <button class="hud-btn" onclick="resetPhoto()">Acak Ulang</button>
+      </div>
+    `;
+    initPhotoPuzzle();
+  }
+  
+  puz.classList.add('show');
+}
+
+function updateClockVisual() {
+  const h = parseInt(document.getElementById('clock-hour').value) || 3;
+  const m = parseInt(document.getElementById('clock-minute').value) || 17;
+  const ha = ((h%12) + m/60) / 12 * 360;
+  const ma = m / 60 * 360;
+  document.getElementById('hour-hand').style.transform = `rotate(${ha}deg)`;
+  document.getElementById('minute-hand').style.transform = `rotate(${ma}deg)`;
+}
+
+function tryClock() {
+  const h = parseInt(document.getElementById('clock-hour').value);
+  const m = parseInt(document.getElementById('clock-minute').value);
+  // Correct answer: 4:00 (Selin's prayer time) or 3:17 (current). 
+  // The twist: the clock was stopped at 3:17, but Selin prays at 4:00.
+  // Setting to 4:00 "completes" the hour and triggers revelation.
+  if (h === 4 && m === 0) {
+    notify('Jam berderak. Mekanisme bergerak. Dari dalam menara, sesuatu jatuh...');
+    setTimeout(() => {
+      addClue('clock_stopped');
+      addJournal('timeline','clock_0400','Jam Berputar ke 04:00','Ketika jarum diputar ke pukul 04:00 — waktu doa Selin — mekanisme bergerak. Sesuatu jatuh dari menara: sebuah kunci kecil berukir angka 14.');
+      State.puzzlesSolved.push('church_clock');
+      State.flags.clock_solved = true;
+      closePuzzle();
+      notify('Kunci kecil jatuh dari menara. Terukir angka "14".');
+    }, 1500);
+  } else if (h === 3 && m === 17) {
+    notify('Jam tetap diam. Ini waktu ketika ia berhenti — bukan waktu yang "seharusnya".');
+  } else {
+    notify('Tidak terjadi apa-apa. Waktu ini tidak memiliki makna khusus.');
+  }
+}
+
+function solveMissingPage() {
+  addClue('missing_page');
+  State.puzzlesSolved.push('missing_page');
+  State.flags.missing_page_solved = true;
+  addJournal('documents','missing_page_note','Sobekan Halaman','Di tepi sobekan tertulis: "mereka tidak boleh tahu". Catatan 14 Oktober sengaja dihapus. Seseorang di arsip melakukan ini — bukan kerusakan waktu.');
+  closePuzzle();
+  notify('Potongan halaman disimpan. Catatan dalam jurnal diperbarui.');
+}
+
+// Photo puzzle
+let photoPieces = [];
+function initPhotoPuzzle() {
+  const canvas = document.getElementById('photo-canvas');
+  canvas.innerHTML = '';
+  const cw = canvas.clientWidth;
+  const ch = canvas.clientHeight;
+  // 3x3 grid, one piece missing (the face)
+  const pw = cw/3, ph = ch/3;
+  photoPieces = [];
+  // Draw base image via CSS gradients (simulated family photo)
+  // Background: warm interior
+  const colors = ['#8a6a3a','#6b4e3a','#5a4a6b','#4a5d3a','#8a3a2a','#3a4d5e','#d4b896','#c9b890','#e8b870'];
+  // Target slots
+  const slots = [];
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      slots.push({ x: c*pw, y: r*ph, idx: r*3+c });
+    }
+  }
+  // Create pieces (all 9, but one is "the face" — special)
+  const shuffled = [...Array(9).keys()].sort(() => Math.random() - 0.5);
+  // Place pieces scattered around the canvas edges
+  for (let i = 0; i < 9; i++) {
+    const srcIdx = shuffled[i];
+    const sr = Math.floor(srcIdx/3), sc = srcIdx%3;
+    const piece = document.createElement('div');
+    piece.className = 'photo-piece';
+    piece.style.width = pw + 'px';
+    piece.style.height = ph + 'px';
+    // Simulate image via gradient
+    const bgColors = [
+      'linear-gradient(135deg,#6b4e3a,#8a6a3a)', // wall
+      'linear-gradient(135deg,#5a4a6b,#4a3a5a)', // curtain
+      'linear-gradient(135deg,#4a5d3a,#3a4d2a)', // plant
+      'linear-gradient(135deg,#d4b896,#c9b890)', // person 1
+      'linear-gradient(135deg,#e8b870,#c9a050)', // person 2 (face — red coat)
+      'linear-gradient(135deg,#8a3a2a,#6b2a1a)', // person 3
+      'linear-gradient(135deg,#3a4d5e,#2a3d4e)', // floor
+      'linear-gradient(135deg,#c9b890,#a89870)', // frame
+      'linear-gradient(135deg,#5a6b4a,#4a5b3a)'  // shadow
+    ];
+    piece.style.background = bgColors[srcIdx];
+    piece.dataset.idx = srcIdx;
+    // Scatter position
+    const tx = 20 + (i%3) * (pw + 10);
+    const ty = ch + 20 + Math.floor(i/3) * (ph + 10);
+    piece.style.left = tx + 'px';
+    piece.style.top = ty + 'px';
+    piece.style.position = 'absolute';
+    canvas.appendChild(piece);
+    photoPieces.push({ el: piece, idx: srcIdx, placed: false });
+    makeDraggable(piece, canvas, slots, pw, ph);
+  }
+  // Mark the face piece (idx 4) as special
+  const facePiece = photoPieces.find(p => p.idx === 4);
+  if (facePiece) {
+    facePiece.el.style.border = '2px dashed var(--blood)';
+    facePiece.el.title = 'Potongan wajah — perempuan bermantel merah';
+  }
+}
+
+function makeDraggable(el, canvas, slots, pw, ph) {
+  let dragging = false, offsetX = 0, offsetY = 0;
+  const start = (e) => {
+    if (el.classList.contains('placed')) return;
+    dragging = true;
+    const t = e.touches ? e.touches[0] : e;
+    const r = el.getBoundingClientRect();
+    offsetX = t.clientX - r.left;
+    offsetY = t.clientY - r.top;
+    el.style.zIndex = 10;
+    e.preventDefault();
+  };
+  const move = (e) => {
+    if (!dragging) return;
+    const t = e.touches ? e.touches[0] : e;
+    const cr = canvas.getBoundingClientRect();
+    const x = t.clientX - cr.left - offsetX;
+    const y = t.clientY - cr.top - offsetY;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+  };
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    el.style.zIndex = 1;
+    // Check snap
+    const idx = parseInt(el.dataset.idx);
+    const targetR = Math.floor(idx/3), targetC = idx%3;
+    const tx = targetC * pw, ty = targetR * ph;
+    const cx = parseFloat(el.style.left), cy = parseFloat(el.style.top);
+    if (Math.abs(cx - tx) < 30 && Math.abs(cy - ty) < 30) {
+      el.style.left = tx + 'px';
+      el.style.top = ty + 'px';
+      el.classList.add('placed');
+      el.style.cursor = 'default';
+      const p = photoPieces.find(p => p.el === el);
+      if (p) p.placed = true;
+      checkPhotoComplete();
+    }
+  };
+  el.addEventListener('mousedown', start);
+  el.addEventListener('touchstart', start, {passive:false});
+  window.addEventListener('mousemove', move);
+  window.addEventListener('touchmove', move, {passive:false});
+  window.addEventListener('mouseup', end);
+  window.addEventListener('touchend', end);
+}
+
+function checkPhotoComplete() {
+  if (photoPieces.every(p => p.placed)) {
+    setTimeout(() => {
+      notify('Foto tersusun. Perempuan bermantel merah menatapmu dari masa lalu.');
+      addClue('torn_photo');
+      addClue('photo_face');
+      State.puzzlesSolved.push('torn_photo');
+      State.flags.photo_solved = true;
+      addJournal('objects','photo_reveal','Foto Terungkap','Perempuan bermantel merah dalam foto — dia bukan anggota keluarga. Dia seorang asing. Wajahnya dirobek dengan sengaja, bukan rusak. Seseorang tidak ingin dia diingat.');
+      closePuzzle();
+    }, 500);
+  }
+}
+
+function resetPhoto() {
+  initPhotoPuzzle();
+}
+
+function closePuzzle() {
+  document.getElementById('puzzle').classList.remove('show');
+}
+document.getElementById('puzzle-close').addEventListener('click', closePuzzle);
+
+// ---------- JOURNAL ----------
+function toggleJournal() {
+  const j = document.getElementById('journal');
+  if (j.classList.contains('show')) {
+    j.classList.remove('show');
+    return;
+  }
+  j.classList.add('show');
+  renderJournalTabs();
+}
+document.getElementById('journal-close').addEventListener('click', () => {
+  document.getElementById('journal').classList.remove('show');
+});
+
+const JournalTabs = [
+  { id:'people', label:'Orang' },
+  { id:'locations', label:'Lokasi' },
+  { id:'documents', label:'Dokumen' },
+  { id:'witnesses', label:'Kesaksian' },
+  { id:'objects', label:'Objek' },
+  { id:'timeline', label:'Linimasa' },
+  { id:'notes', label:'Catatan' }
+];
+let currentJournalTab = 'people';
+
+function renderJournalTabs() {
+  const tabs = document.getElementById('journal-tabs');
+  tabs.innerHTML = '';
+  for (const t of JournalTabs) {
+    const el = document.createElement('div');
+    el.className = 'jtab' + (t.id === currentJournalTab ? ' active' : '');
+    el.textContent = t.label;
+    el.onclick = () => { currentJournalTab = t.id; renderJournalTabs(); };
+    tabs.appendChild(el);
+  }
+  renderJournalContent();
+}
+
+function renderJournalContent() {
+  const content = document.getElementById('journal-content');
+  const entries = State.journal[currentJournalTab];
+  if (!entries || entries.length === 0) {
+    content.innerHTML = '<div style="opacity:.5;font-style:italic;text-align:center;padding:40px">Belum ada catatan dalam kategori ini.</div>';
+    return;
+  }
+  content.innerHTML = entries.map(e => `
+    <div class="jentry">
+      <div class="jentry-title">${e.title}</div>
+      <div class="jentry-meta">${e.time} · ${e.scene || '—'}</div>
+      <div class="jentry-body">${e.body}</div>
+    </div>
+  `).join('');
+}
+
+// ---------- CLUE BOARD ----------
+function toggleClueBoard() {
+  const cb = document.getElementById('clueboard');
+  if (cb.classList.contains('show')) {
+    cb.classList.remove('show');
+    return;
+  }
+  cb.classList.add('show');
+  renderClueBoard();
+}
+document.getElementById('cb-close').addEventListener('click', () => {
+  document.getElementById('clueboard').classList.remove('show');
+});
+
+// Tool buttons
+document.querySelectorAll('.cb-tool').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.cb-tool').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    State.cbTool = btn.dataset.tool;
+    if (btn.dataset.tool === 'hypothesis') {
+      createHypothesis();
+    }
+  });
+});
+
+function addClueToTray(id) {
+  const tray = document.getElementById('cb-tray-cards');
+  const c = Clues[id];
+  const el = document.createElement('div');
+  el.className = 'cb-tray-card';
+  el.dataset.id = id;
+  el.innerHTML = `
+    <div class="cb-card-type">${c.type}</div>
+    <div class="cb-card-title">${c.title}</div>
+    <div class="cb-card-body">${c.body}</div>
+  `;
+  makeTrayCardDraggable(el);
+  tray.appendChild(el);
+}
+
+function makeTrayCardDraggable(el) {
+  const start = (e) => {
+    const t = e.touches ? e.touches[0] : e;
+    const id = el.dataset.id;
+    const rect = el.getBoundingClientRect();
+    const offX = t.clientX - rect.left;
+    const offY = t.clientY - rect.top;
+    // Create card on board
+    const card = createBoardCard(id, 0, 0);
+    const board = document.getElementById('cb-board');
+    const br = board.getBoundingClientRect();
+    card.style.left = (t.clientX - br.left - offX) / State.cbPan.zoom - State.cbPan.x + 'px';
+    card.style.top = (t.clientY - br.top - offY) / State.cbPan.zoom - State.cbPan.y + 'px';
+    el.remove();
+    // Drag
+    const move = (e2) => {
+      const t2 = e2.touches ? e2.touches[0] : e2;
+      card.style.left = ((t2.clientX - br.left) / State.cbPan.zoom - State.cbPan.x - offX) + 'px';
+      card.style.top = ((t2.clientY - br.top) / State.cbPan.zoom - State.cbPan.y - offY) + 'px';
+    };
+    const end = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('mouseup', end);
+      window.removeEventListener('touchend', end);
+      // Save position
+      const b = State.board.find(b => b.id === id);
+      if (b) { b.x = parseFloat(card.style.left); b.y = parseFloat(card.style.top); }
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('touchmove', move);
+    window.addEventListener('mouseup', end);
+    window.addEventListener('touchend', end);
+  };
+  el.addEventListener('mousedown', start);
+  el.addEventListener('touchstart', start, {passive:false});
+}
+
+function createBoardCard(id, x, y) {
+  const c = Clues[id];
+  if (!c) return null;
+  State.board.push({ id, x, y });
+  const world = document.getElementById('cb-world');
+  const el = document.createElement('div');
+  el.className = 'cb-card';
+  el.dataset.type = c.type;
+  el.dataset.id = id;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.innerHTML = `
+    <div class="cb-card-type">${c.type}</div>
+    <div class="cb-card-title">${c.title}</div>
+    <div class="cb-card-body">${c.body}</div>
+  `;
+  makeBoardCardInteractive(el);
+  world.appendChild(el);
+  return el;
+}
+
+function makeBoardCardInteractive(el) {
+  let dragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
+  const start = (e) => {
+    if (State.cbTool === 'link') {
+      handleLink(el);
+      e.preventDefault();
+      return;
+    }
+    dragging = true;
+    const t = e.touches ? e.touches[0] : e;
+    startX = t.clientX; startY = t.clientY;
+    origX = parseFloat(el.style.left); origY = parseFloat(el.style.top);
+    el.classList.add('selected');
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const move = (e) => {
+    if (!dragging) return;
+    const t = e.touches ? e.touches[0] : e;
+    const dx = (t.clientX - startX) / State.cbPan.zoom;
+    const dy = (t.clientY - startY) / State.cbPan.zoom;
+    el.style.left = (origX + dx) + 'px';
+    el.style.top = (origY + dy) + 'px';
+  };
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    el.classList.remove('selected');
+    const b = State.board.find(b => b.id === el.dataset.id);
+    if (b) { b.x = parseFloat(el.style.left); b.y = parseFloat(el.style.top); }
+    renderLinks();
+  };
+  el.addEventListener('mousedown', start);
+  el.addEventListener('touchstart', start, {passive:false});
+  window.addEventListener('mousemove', move);
+  window.addEventListener('touchmove', move);
+  window.addEventListener('mouseup', end);
+  window.addEventListener('touchend', end);
+}
+
+function handleLink(el) {
+  const id = el.dataset.id;
+  if (!State.cbLinking) {
+    State.cbLinking = id;
+    el.classList.add('linking');
+    notify('Pilih kartu kedua untuk menghubungkan.');
+  } else {
+    if (State.cbLinking === id) {
+      State.cbLinking = null;
+      el.classList.remove('linking');
+      return;
+    }
+    const label = prompt('Label hubungan (opsional):', '') || '';
+    State.links.push({ a: State.cbLinking, b: id, label });
+    State.cbLinking = null;
+    document.querySelectorAll('.cb-card.linking').forEach(c => c.classList.remove('linking'));
+    renderLinks();
+    notify('Hubungan ditambahkan.');
+    checkFinalTimeline();
+  }
+}
+
+function renderLinks() {
+  const svg = document.getElementById('cb-lines');
+  svg.innerHTML = '';
+  for (const link of State.links) {
+    const a = State.board.find(b => b.id === link.a);
+    const b = State.board.find(b => b.id === link.b);
+    if (!a || !b) continue;
+    const ax = a.x + 90, ay = a.y + 40;
+    const bx = b.x + 90, by = b.y + 40;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', ax); line.setAttribute('y1', ay);
+    line.setAttribute('x2', bx); line.setAttribute('y2', by);
+    line.setAttribute('stroke', '#e8b870');
+    line.setAttribute('stroke-width', '2');
+    line.setAttribute('stroke-dasharray', '4,4');
+    svg.appendChild(line);
+    if (link.label) {
+      const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+      text.setAttribute('x', (ax+bx)/2);
+      text.setAttribute('y', (ay+by)/2 - 5);
+      text.setAttribute('fill', '#e8dcc0');
+      text.setAttribute('font-size', '10');
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('font-family', 'Georgia');
+      text.textContent = link.label;
+      svg.appendChild(text);
+    }
+  }
+}
+
+function createHypothesis() {
+  const text = prompt('Tulis hipotesismu tentang 14 Oktober:');
+  if (!text) return;
+  const id = 'hypo_' + Date.now();
+  Clues[id] = { id, type:'hypothesis', title:'Hipotesis', body: text };
+  const world = document.getElementById('cb-world');
+  const el = document.createElement('div');
+  el.className = 'cb-card';
+  el.dataset.type = 'hypothesis';
+  el.dataset.id = id;
+  el.style.left = (200 + Math.random()*400) + 'px';
+  el.style.top = (200 + Math.random()*300) + 'px';
+  el.innerHTML = `
+    <div class="cb-card-type">hipotesis</div>
+    <div class="cb-card-title">Teori Pemain</div>
+    <div class="cb-card-body">${text}</div>
+  `;
+  State.board.push({ id, x: parseFloat(el.style.left), y: parseFloat(el.style.top) });
+  makeBoardCardInteractive(el);
+  world.appendChild(el);
+  State.hypotheses.push(text);
+  addJournal('notes', id, 'Hipotesis', text);
+}
+
+function renderClueBoard() {
+  const world = document.getElementById('cb-world');
+  world.innerHTML = '';
+  // Recreate placed cards
+  for (const b of State.board) {
+    if (b.id.startsWith('hypo_')) continue; // handled separately
+    const c = Clues[b.id];
+    if (!c) continue;
+    const el = document.createElement('div');
+    el.className = 'cb-card';
+    el.dataset.type = c.type;
+    el.dataset.id = b.id;
+    el.style.left = b.x + 'px';
+    el.style.top = b.y + 'px';
+    el.innerHTML = `
+      <div class="cb-card-type">${c.type}</div>
+      <div class="cb-card-title">${c.title}</div>
+      <div class="cb-card-body">${c.body}</div>
+    `;
+    makeBoardCardInteractive(el);
+    world.appendChild(el);
+  }
+  // Hypotheses
+  for (const h of State.hypotheses) {
+    // Already in board via createHypothesis
+  }
+  renderLinks();
+}
+
+// Board pan/zoom
+const cbBoard = document.getElementById('cb-board');
+let cbPanning = false, cbPanStart = {x:0,y:0};
+cbBoard.addEventListener('mousedown', e => {
+  if (e.target === cbBoard || e.target.id === 'cb-world' || e.target.tagName === 'svg') {
+    cbPanning = true;
+    cbPanStart = { x: e.clientX - State.cbPan.x, y: e.clientY - State.cbPan.y };
+    cbBoard.classList.add('dragging');
+  }
+});
+window.addEventListener('mousemove', e => {
+  if (!cbPanning) return;
+  State.cbPan.x = e.clientX - cbPanStart.x;
+  State.cbPan.y = e.clientY - cbPanStart.y;
+  document.getElementById('cb-world').style.transform = `translate(${State.cbPan.x}px,${State.cbPan.y}px) scale(${State.cbPan.zoom})`;
+  document.getElementById('cb-lines').style.transform = `translate(${State.cbPan.x}px,${State.cbPan.y}px) scale(${State.cbPan.zoom})`;
+});
+window.addEventListener('mouseup', () => {
+  cbPanning = false;
+  cbBoard.classList.remove('dragging');
+});
+cbBoard.addEventListener('wheel', e => {
+  e.preventDefault();
+  State.cbPan.zoom = Math.max(0.3, Math.min(1.5, State.cbPan.zoom - e.deltaY * 0.001));
+  document.getElementById('cb-world').style.transform = `translate(${State.cbPan.x}px,${State.cbPan.y}px) scale(${State.cbPan.zoom})`;
+  document.getElementById('cb-lines').style.transform = `translate(${State.cbPan.x}px,${State.cbPan.y}px) scale(${State.cbPan.zoom})`;
+}, {passive:false});
+
+// Check for final timeline
+function checkFinalTimeline() {
+  // If player links clock + missing page + photo + selin + sennard, trigger ending path
+  const keyClues = ['clock_stopped','missing_page','torn_photo','selin_prayer','sennard_silence'];
+  const allFound = keyClues.every(c => State.clues.includes(c));
+  const allLinked = State.links.length >= 5;
+  if (allFound && allLinked && !State.flags.ending_triggered) {
+    State.flags.ending_triggered = true;
+    setTimeout(() => {
+      notify('Pola mulai terbentuk. Kebenaran tentang 14 Oktober dapat disusun...');
+      setTimeout(triggerEnding, 3000);
+    }, 1500);
+  }
+}
+
+// ---------- ENDINGS ----------
+function triggerEnding() {
+  // Determine ending based on state
+  const trust = Object.values(State.relationships).reduce((s,r) => s + r.trust, 0);
+  const puzzles = State.puzzlesSolved.length;
+  const hypotheses = State.hypotheses.length;
+  
+  let ending;
+  if (trust > 150 && puzzles >= 3 && hypotheses >= 1) {
+    ending = {
+      title: 'AKHIR I — PENGUNGKAPAN PENUH',
+      text: `Elin menyusun seluruh bukti di papan. Jam yang berhenti. Halaman yang dirobek. Foto yang dicuri wajahnya. Kesaksian Selin. Keheningan Sennard.
+
+Kebenaran tentang 14 Oktober akhirnya utuh: kapal pengungsi ditolak, wabah palsu disebarkan, seorang kakek — kakek Hask — menenggelamkan kapal atas inisiatif sendiri. Sebagian penumpang selamat di Isla Ferro. Kota memilih diam.
+
+Elin membawa semua ini ke surat kabar ibu kota.
+
+Tarrow tidak pernah sama lagi. Beberapa penduduk memaafkannya. Beberapa membencinya. Selin tersenyum untuk pertama kalinya dalam sepuluh tahun.
+
+Dan di suatu pagi, Elin menemukan surat dari ibunya — surat yang tidak pernah dikirim, berisi kebenaran yang sama. Ibunya telah mencoba melakukan ini dulu. Dan gagal.
+
+Kali ini, Elin tidak gagal.`
+    };
+  } else if (trust > 80 && puzzles >= 2) {
+    ending = {
+      title: 'AKHIR II — KEBENARAN PERSONAL',
+      text: `Elin tahu kebenarannya. Tapi ia memilih untuk tidak membagikannya kepada dunia.
+
+Hanya Mira — perempuan bermantel merah dalam foto — yang ditemukan di Isla Ferro, yang tahu. Hanya keluarga korban yang Elin lacak satu per satu, yang menerima surat tanpa nama.
+
+Tarrow tetap diam. Tapi beberapa orang, di beberapa rumah, mulai tidur lebih nyenyak.
+
+Elin kembali ke ibu kota. Di tasnya, ada satu halaman yang ia sobek sendiri dari buku arsip — halaman 14 Oktober yang ia temukan kembali.
+
+Ia menyimpannya. Untuk dirinya sendiri. Untuk ibunya. Untuk mereka yang dilupakan.`
+    };
+  } else if (State.flags.aldwin_suspicious || trust < 50) {
+    ending = {
+      title: 'AKHIR III — DIAM BERSAMA',
+      text: `Elin menutup jurnalnya. Papan clue ia biarkan berantakan.
+
+Pendeta Aldwin benar: beberapa luka lebih baik tidak dibuka. Atau mungkin Elin hanya lelah. Mungkin ia takut. Mungkin ia mulai memahami mengapa Tarrow memilih lupa — karena mengingat terlalu berat.
+
+Ia meninggalkan kota pada pagi yang berkabut. Tidak ada yang mengantar. Tidak ada yang menghalangi.
+
+Di kereta kembali ke ibu kota, Elin menulis dalam laporannya: "Arsip Tarrow lengkap. Tidak ada yang hilang."
+
+Dan untuk pertama kalinya, ia berbohong.
+
+Ia kini bagian dari Tarrow.`
+    };
+  } else {
+    ending = {
+      title: 'AKHIR IV — WARISAN IBU',
+      text: `Di antara dokumen arsip, Elin menemukan sesuatu yang tidak ia cari: surat dari ibunya, dua puluh tahun lalu.
+
+Ibunya pernah datang ke Tarrow. Ibunya pernah menemukan halaman yang hilang. Ibunya pernah berbicara dengan Sennard, dengan Selin, dengan Pendeta Aldwin.
+
+Dan ibunya memilih untuk diam.
+
+Surat itu tidak pernah dikirim. Ditutup dengan kalimat: "Maafkan aku, Elin. Suatu hari kau akan mengerti mengapa."
+
+Elin mengerti sekarang.
+
+Ia menyelesaikan apa yang ibunya tidak bisa: ia mengirim surat itu. Ke dirinya sendiri. Ke masa depan.
+
+Dan kali ini, seseorang — Elin sendiri — membacanya.`
+    };
+  }
+  
+  showEnding(ending);
+}
+
+function showEnding(ending) {
+  document.getElementById('ending-title').textContent = ending.title;
+  document.getElementById('ending-text').textContent = ending.text;
+  document.getElementById('ending').classList.add('show');
+}
+
+// ---------- SAVE / LOAD ----------
+function saveGame() {
+  const data = {
+    scene: State.scene,
+    player: State.player,
+    time: State.time,
+    weather: State.weather,
+    flags: State.flags,
+    clues: State.clues,
+    board: State.board,
+    links: State.links,
+    hypotheses: State.hypotheses,
+    journal: State.journal,
+    relationships: State.relationships,
+    puzzlesSolved: State.puzzlesSolved,
+    companions: State.companions
+  };
+  localStorage.setItem('tarrow_save', JSON.stringify(data));
+}
+
+function loadGame() {
+  const raw = localStorage.getItem('tarrow_save');
+  if (!raw) return false;
+  try {
+    const data = JSON.parse(raw);
+    Object.assign(State, data);
+    // Rebuild clue tray (only undiscovered ones stay in tray — but we saved placed ones)
+    return true;
+  } catch(e) { return false; }
+}
+
+// ---------- NOTIFICATION ----------
+let notifTimer = null;
+function notify(text) {
+  const el = document.getElementById('notif');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ---------- CLOSE ALL ----------
+function closeAll() {
+  document.getElementById('journal').classList.remove('show');
+  document.getElementById('clueboard').classList.remove('show');
+  document.getElementById('puzzle').classList.remove('show');
+  if (State.dialog.active) closeDialog();
+}
+
+// ---------- START ----------
+document.getElementById('start-btn').addEventListener('click', () => {
+  document.getElementById('intro').style.display = 'none';
+  State.started = true;
+  // Opening narration
+  setTimeout(() => notify('Tarrow. Kota pesisir. Hari pertamamu sebagai arsiparis.'), 800);
+  setTimeout(() => {
+    notify('Cari tahu apa yang terjadi pada 14 Oktober.');
+    addJournal('notes','intro','Misi','Aku datang ke Tarrow untuk menyalin arsip. Tapi halaman 14 Oktober hilang. Semua orang mengingatnya. Tidak ada yang menceritakannya dengan cara yang sama.');
+  }, 3500);
+});
+
+// Check for save
+if (localStorage.getItem('tarrow_save')) {
+  const lb = document.getElementById('load-btn');
+  lb.style.display = 'inline-block';
+  lb.addEventListener('click', () => {
+    if (loadGame()) {
+      document.getElementById('intro').style.display = 'none';
+      State.started = true;
+      // Re-add clue tray items (only those not placed)
+      for (const id of State.clues) {
+        if (!State.board.find(b => b.id === id)) addClueToTray(id);
+      }
+      notify('Permainan dimuat.');
+    }
+  });
+}
+
+// Initial clue tray setup (empty until discovered)
+// Give player starting clues after first interactions
+
+// Auto-save every 60s
+setInterval(() => { if (State.started) saveGame(); }, 60000);
+
+</script>
+</body>
+</html>
